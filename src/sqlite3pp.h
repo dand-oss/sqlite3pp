@@ -130,6 +130,11 @@ namespace sqlite3pp
     void set_update_handler(update_handler h);
     void set_authorize_handler(authorize_handler h);
 
+    // make usable as argument to sqlite C API
+    operator sqlite3*(){
+        return db_;
+    }
+
    private:
     database(sqlite3* pdb);
 
@@ -179,6 +184,16 @@ namespace sqlite3pp
 
     int step();
     int reset();
+
+    // allow to be used in the sqlite C api
+    operator sqlite3_stmt*(){
+        return stmt_;
+    }
+
+    // allow access to the associated DB
+    database& db(){
+        return db_;
+    }
 
    protected:
     explicit statement(database& db, char const* stmt = nullptr);
@@ -324,6 +339,9 @@ namespace sqlite3pp
 
     iterator begin();
     iterator end();
+
+    // make sure result set has been consumed, or exception
+    void assert_done();
   };
 
   class transaction : noncopyable
