@@ -565,6 +565,13 @@ namespace sqlite3pp
     return query_iterator();
   }
 
+  void query::assert_done()
+  {
+      int rc = step();
+      if(rc == SQLITE_ROW){
+          throw database_error("unexpected rows remain in result set");
+      }
+  }
 
   transaction::transaction(database& db, bool fcommit, bool freserve) : db_(&db), fcommit_(fcommit)
   {
