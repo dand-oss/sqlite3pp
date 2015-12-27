@@ -9,12 +9,6 @@ include(asv_cmake_defaults)
 asv_cmake_defaults( )
 ###############
 
-set(ASV_3RDPARTY $ENV{ASV_3RDPARTY}
-  CACHE PATH "ASV 3rd party utilities directory")
-
-include_directories(AFTER ${ASV_3RDPARTY}/include
-)
-
 foreach(s
     sqlite3pp.cpp     sqlite3ppext.cpp
     )
