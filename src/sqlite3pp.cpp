@@ -24,6 +24,7 @@
 
 #include <cstring>
 #include <memory>
+#include <sstream>
 
 #include "sqlite3pp.h"
 
@@ -70,8 +71,11 @@ namespace sqlite3pp
   {
     if (dbname) {
       auto rc = connect(dbname, flags, vfs);
-      if (rc != SQLITE_OK)
-        throw database_error("can't connect database");
+      if (rc != SQLITE_OK){
+          std::ostringstream msg;
+          msg << "Cannot connect to database: " << dbname;
+          throw database_error(msg.str().c_str());
+      }
     }
   }
 
@@ -611,7 +615,8 @@ namespace sqlite3pp
   {
   }
 
-  database_error::database_error(database& db) : std::runtime_error(sqlite3_errmsg(db.db_))
+  database_error::database_error(database& db)
+      : std::runtime_error(sqlite3_errmsg(db.db_))
   {
   }
 
