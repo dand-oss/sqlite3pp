@@ -9,7 +9,9 @@ include(asv_cmake_defaults)
 asv_cmake_defaults( )
 ###############
 
-include_directories(AFTER $ENV{ASV_PLAT_INC})
+# where our sqlite build lives
+include_directories(AFTER ${ASV_PLAT_INC})
+message(STATUS "include_directory=\"${ASV_PLAT_INC}\"")
 
 foreach(s
     sqlite3pp.cpp     sqlite3ppext.cpp
