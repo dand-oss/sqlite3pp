@@ -118,6 +118,8 @@ namespace sqlite3pp
     int error_code() const;
     int extended_error_code() const;
     char const* error_msg() const;
+    std::string full_error_msg( const char* msg = nullptr ) const ;
+    std::string full_error_msg( const std::string& msg ) const ;
 
     int execute(char const* sql);
     int executef(char const* sql, ...);
@@ -149,11 +151,23 @@ namespace sqlite3pp
     authorize_handler ah_;
   };
 
+  // carries full error state
   class database_error : public std::runtime_error
   {
    public:
-    explicit database_error(char const* msg);
-    explicit database_error(database& db);
+    explicit database_error(database& db, char const* msg = nullptr);
+    explicit database_error(database&db, const std::string& msg) ;
+    std::string user_msg() const { return _user_msg ; }
+    std::string errmsg() const { return _errmsg ; }
+    int errcode() const { return _errcode ; }
+    int extended_errcode() const { return _extended_errcode ; }
+    virtual const char* what() const noexcept override;
+   private:
+    std::string _errmsg ;
+    std::string _user_msg ;
+    int _errcode { 0 } ;
+    int _extended_errcode { 0 } ;
+    std::string full_error_msg( ) const ;
   };
 
   enum copy_semantic { copy, nocopy };
