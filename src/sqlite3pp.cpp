@@ -73,8 +73,8 @@ namespace sqlite3pp
       auto rc = connect(dbname, flags, vfs);
       if (rc != SQLITE_OK){
           std::ostringstream msg;
-          msg << "Cannot connect to database: " << dbname;
-          throw database_error(msg.str().c_str());
+          msg << "Cannot connect to database: " << dbname ;
+          throw database_error(*this, msg.str());
       }
     }
   }
@@ -237,6 +237,21 @@ namespace sqlite3pp
   char const* database::error_msg() const
   {
     return sqlite3_errmsg(db_);
+  }
+
+  std::string database::full_error_msg( const char* umsg ) const
+  {
+    std::ostringstream ostr;
+    if ( umsg ) ostr << umsg << std::endl ;
+    ostr << "Error code : " << error_code()
+         << "Extended code: " << extended_error_code() << std::endl
+         << "Message: " << error_msg() ;
+    return ostr.str() ;
+  }
+
+  std::string database::full_error_msg( const std::string& umsg ) const
+  {
+      return full_error_msg(umsg.c_str());
   }
 
   int database::execute(char const* sql)
@@ -582,7 +597,7 @@ namespace sqlite3pp
   {
       const auto rc = step();
       if(rc == SQLITE_ROW){
-          throw database_error("unexpected rows remain in result set");
+          throw database_error(db(), "unexpected rows remain in result set");
       }
   }
 
@@ -619,14 +634,39 @@ namespace sqlite3pp
     return rc;
   }
 
+  database_error::database_error(database& db, char const* umsg)
+      : _errcode( db.error_code() )
+      , _extended_errcode(db.extended_error_code())
+      , _errmsg(db.error_msg())
+      , std::runtime_error("")
+  {
+    if ( umsg ) _user_msg = umsg ;
+  }
 
-  database_error::database_error(char const* msg) : std::runtime_error(msg)
+  database_error::database_error(database& db, const std::string& umsg)
+      : _errcode( db.error_code() )
+      , _extended_errcode(db.extended_error_code())
+      , _errmsg(db.error_msg())
+      , _user_msg(umsg)
+      , std::runtime_error("")
   {
   }
 
-  database_error::database_error(database& db)
-      : std::runtime_error(sqlite3_errmsg(db.db_))
+  std::string database_error::full_error_msg( ) const
   {
+    std::ostringstream ostr;
+    if ( _user_msg.length() ) ostr << _user_msg << std::endl ;
+    ostr << "Error code : " << errcode()
+         << " Extended code: " << extended_errcode() << std::endl
+         << "Message: " << errmsg() ;
+    return ostr.str() ;
   }
+
+  const char* database_error::what() const noexcept
+  {
+      static std::string msg(full_error_msg()) ;
+      return msg.c_str() ;
+  }
+
 
 } // namespace sqlite3pp
