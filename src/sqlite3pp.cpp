@@ -279,8 +279,10 @@ namespace sqlite3pp
   {
     if (stmt) {
       auto rc = prepare(stmt);
-      if (rc != SQLITE_OK)
-        throw database_error(db_);
+      if (rc != SQLITE_OK) {
+        database_error myexc(db_);
+        throw myexc ;
+      }
     }
   }
 
@@ -302,7 +304,8 @@ namespace sqlite3pp
 
   int statement::prepare_impl(char const* stmt)
   {
-    return sqlite3_prepare_v2(db_.db_, stmt, std::strlen(stmt), &stmt_, &tail_);
+    const auto stmtlen = std::strlen(stmt) ;
+    return sqlite3_prepare_v2(db_.db_, stmt, stmtlen, &stmt_, &tail_);
   }
 
   int statement::finish()
