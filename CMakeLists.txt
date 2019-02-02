@@ -1,70 +1,152 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.31)
 
-project(sqlite3pp CXX)
+project(sqlite3pp
+    LANGUAGES CXX
+    VERSION 1.1.0
+    DESCRIPTION "C++ wrapper for SQLite3"
+)
 
 ###############
 # ASI default settings
 list(APPEND CMAKE_MODULE_PATH "$ENV{ASV_CMAKE}")
 include(asv_cmake_defaults)
-asv_cmake_defaults( )
+asv_cmake_defaults()
 ###############
 
-# where our sqlite build lives
-include_directories(AFTER ${ASV_PLAT_INC})
-message(STATUS "include_directory=\"${ASV_PLAT_INC}\"")
+set(libname "sqlite3pp")
+# do not remove - WG 7.0 requires the static lib
+set(staticlibname "sqlite3pp-static")
 
-foreach(s
-    sqlite3pp.cpp     sqlite3ppext.cpp
-    )
-  list(APPEND s3_sources src/${s})
-endforeach()
+# We built SQLite as cmake package
+find_package(Threads REQUIRED)
+find_package(SQLite3 CONFIG REQUIRED)
 
-include(find_library_list)
-macro( find_3rdparty_lib lib_prefix lib_name)
-  # note ARGN is all args past those expected as a list with ";" seperator
-  find_libraries(${lib_prefix} ${ASV_PLAT_LIB} ${CMAKE_DEBUG_POSTFIX} SHARED ${lib_name})
-endmacro(find_3rdparty_lib)
+asv_print_value(
+    CMAKE_PREFIX_PATH
+    CMAKE_INSTALL_PREFIX
+    CMAKE_LIBRARY_PATH
+    CMAKE_FIND_LIBRARY_PREFIXES
+    CMAKE_FIND_LIBRARY_SUFFIXES
+    ASV_PLAT_PORTS
+    ASV_PLAT_INC
+    ASV_PLAT_LIB
+)
 
-find_3rdparty_lib(SQLITE3     "sqlite3")
+asv_print_package_properties(
+    SQLite::SQLite3-shared
+)
 
-set( sqlite3pp_libs
-    ${SQLITE3_LIBRARIES}
-    )
+# -----------------------
+# Public header list
+# -----------------------
+set(public_headers
+    src/sqlite3pp.h
+    src/sqlite3ppext.h
+)
 
-set(libname sqlite3pp)
+# -----------------------
+# Shared library
+# -----------------------
+add_library(${libname} SHARED)
 
-# do not remove - WG7 requires the static lib
-set(staticlibname sqlite3ppstatic)
+# Use file sets for public headers
+target_sources(${libname} PUBLIC
+    FILE_SET HEADERS
+    BASE_DIRS src
+    FILES ${public_headers}
+)
 
+target_sources(${libname} PRIVATE
+    src/sqlite3pp.cpp
+    src/sqlite3ppext.cpp
+)
+
+target_include_directories(${libname} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(${libname} PUBLIC
+    SQLite::SQLite3-shared
+)
+
+# -----------------------
+# Static library
+# -----------------------
+add_library(${staticlibname} STATIC)
+
+# Use file sets for public headers (shared between both targets)
+target_sources(${staticlibname} PUBLIC
+    FILE_SET HEADERS
+    BASE_DIRS src
+    FILES ${public_headers}
+)
+
+target_sources(${staticlibname} PRIVATE
+    src/sqlite3pp.cpp
+    src/sqlite3ppext.cpp
+)
+
+target_include_directories(${staticlibname} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(${staticlibname} PUBLIC
+    SQLite::SQLite3  # needed for includes
+)
+
+# -----------------------
+# Platform-specific settings
+# -----------------------
 if (WIN32)
-    add_library(${libname} SHARED ${s3_sources})
-    target_link_libraries(${libname} ${sqlite3pp_libs})
     set_target_properties(${libname} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
-    install_static_pdb(${libname})
-
-    add_library(${staticlibname} STATIC ${s3_sources})
-    target_link_libraries(${staticlibname} ${sqlite3pp_libs})
     install_static_pdb(${staticlibname})
-else(WIN32) # unix
-    add_library(${libname} SHARED ${s3_sources})
-    add_library(${staticlibname} STATIC ${s3_sources})
-endif(WIN32)
+endif()
 
-# copy the lib
-install(TARGETS ${libname}
+# -----------------------
+# Install libraries and headers
+# -----------------------
+install(TARGETS ${libname} ${staticlibname}
+    EXPORT ${PROJECT_NAME}Targets
+    FILE_SET HEADERS DESTINATION include
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
-    )
+    INCLUDES DESTINATION include
+)
 
-install(TARGETS ${staticlibname}
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-    )
+# Install export file
+install(EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
 
-# copy the h files
-install(
-    FILES src/sqlite3pp.h src/sqlite3ppext.h
-    DESTINATION include
-    )
+# Generate and install CMake config file
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY SameMajorVersion
+)
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}Config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    @ONLY
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# CPack configuration for packaging
+set(CPACK_PACKAGE_NAME "${PROJECT_NAME}")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_DESCRIPTION "C++ wrapper for SQLite3")
+set(CPACK_PACKAGE_VENDOR "xAI")
+set(CPACK_GENERATOR "ZIP;TGZ")
+include(CPack)
