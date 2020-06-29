@@ -11,13 +11,11 @@ asv_cmake_defaults( )
 
 set(libname "sqlite3pp")
 # do not remove - WG 7.0 requires the static lib
-set(staticlibname "sqlite3ppstatic")
+set(staticlibname "sqlite3pp-static")
 
-# use our SQLite from ports
-find_port_pkg(sqlite3     "sqlite3")
-set_target_properties(ports::sqlite3 PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES ${ASV_PLAT_INC}
-    )
+# We built SQLite as cmake package
+find_package(Threads REQUIRED)
+find_package(SQLite3 CONFIG)
 
 asv_print_value(
     CMAKE_PREFIX_PATH
@@ -30,7 +28,7 @@ asv_print_value(
     ASV_PLAT_LIB
     )
 asv_print_package_properties(
-    ports::sqlite3
+    SQLite::SQLite3-shared
     )
 
 set(sources
@@ -42,14 +40,14 @@ set(sources
 
 add_library(${libname} SHARED)
 target_sources(${libname} PRIVATE ${sources})
-target_link_libraries(${libname} PRIVATE
-    ports::sqlite3
+target_link_libraries(${libname} PUBLIC
+    SQLite::SQLite3-shared
     )
 
 add_library(${staticlibname} STATIC)
 target_sources(${staticlibname} PRIVATE ${sources})
-target_link_libraries(${staticlibname} PRIVATE
-    ports::sqlite3
+target_link_libraries(${staticlibname} PUBLIC
+    SQLite::SQLite3-shared # needed for includes
     )
 
 if (WIN32)
