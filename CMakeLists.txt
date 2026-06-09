@@ -70,6 +70,10 @@ target_link_libraries(${libname} PUBLIC
     SQLite::SQLite3-shared
 )
 
+target_compile_options(${libname} PRIVATE
+    $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-Wno-deprecated-declarations>
+)
+
 # -----------------------
 # Static library
 # -----------------------
@@ -94,6 +98,10 @@ target_include_directories(${staticlibname} PUBLIC
 
 target_link_libraries(${staticlibname} PUBLIC
     SQLite::SQLite3  # needed for includes
+)
+
+target_compile_options(${staticlibname} PRIVATE
+    $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-Wno-deprecated-declarations>
 )
 
 # -----------------------
